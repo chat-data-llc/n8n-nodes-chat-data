@@ -1,0 +1,92 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+
+# n8n Nodes Chat Data - Cursor Rules
+
+## Project Structure
+
+- `/nodes/` - Contains custom n8n node implementations
+- `/credentials/` - Contains credential types for authentication
+- `/dist/` - Compiled output (don't edit these files directly)
+
+## Node Development
+
+### Creating a New Node
+
+1. Create a new directory under `/nodes/` with your node name
+2. Create a file with naming pattern `YourNodeName.node.ts`
+3. Implement the node using the INodeType interface
+
+Example:
+```typescript
+export class YourNodeName implements INodeType {
+  description: INodeTypeDescription = {
+    displayName: 'Readable Name',
+    name: 'technicalName',
+    // ...other properties
+  };
+
+  async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+    // Implementation
+  }
+}
+```
+
+### Node Properties
+
+Node properties define the UI elements users see when configuring your node:
+
+```typescript
+properties: [
+  {
+    displayName: 'Operation',
+    name: 'operation',
+    type: 'options',
+    default: 'get',
+    options: [
+      { name: 'Get', value: 'get' },
+      { name: 'Create', value: 'create' },
+    ],
+  },
+  // Other properties
+]
+```
+
+## Credentials
+
+Create credential types in the `/credentials/` directory using the ICredentialType interface:
+
+```typescript
+export class YourServiceApi implements ICredentialType {
+  name = 'yourServiceApi';
+  displayName = 'Your Service API';
+  properties: INodeProperties[] = [
+    {
+      displayName: 'API Key',
+      name: 'apiKey',
+      type: 'string',
+      default: '',
+    },
+    // Other properties
+  ];
+}
+```
+
+## Testing
+
+Test your nodes locally with:
+```bash
+pnpm lint     # Check for errors
+pnpm lintfix  # Auto-fix errors where possible
+```
+
+For local testing, link your package to a local n8n installation.
+
+## Publishing
+
+1. Update package.json with your details
+2. Document your node in README.md
+3. Publish to npm registry
