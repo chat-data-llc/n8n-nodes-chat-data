@@ -12,24 +12,13 @@ export const actionOperations: INodeProperties[] = [
         resource: ['action'],
       },
     },
+    // eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
     options: [
       {
-        name: 'Create Chatbot',
-        value: 'createChatbot',
-        description: 'Create a new chatbot',
-        action: 'Create a chatbot',
-      },
-      {
-        name: 'Get Chatbot Training Status',
-        value: 'getChatbotStatus',
-        description: 'Retrieve the training status of a chatbot',
-        action: 'Get chatbot training status',
-      },
-      {
-        name: 'Get Conversations',
-        value: 'getConversations',
-        description: 'Retrieve conversation history from a chatbot',
-        action: 'Get conversations',
+        name: 'Send a Message',
+        value: 'sendMessage',
+        description: 'Send a message to a chat',
+        action: 'Send a message to a chat',
       },
       {
         name: 'Get Leads',
@@ -38,31 +27,19 @@ export const actionOperations: INodeProperties[] = [
         action: 'Get leads',
       },
       {
+        name: 'Get Conversations',
+        value: 'getConversations',
+        description: 'Retrieve conversation history from a chatbot',
+        action: 'Get conversations',
+      },
+      {
         name: 'Make API Call',
         value: 'makeApiCall',
         description: 'Make a custom request to any Chat Data API endpoint',
         action: 'Make an API call',
       },
-      {
-        name: 'Retrain Chatbot',
-        value: 'retrainChatbot',
-        description: 'Retrain a chatbot with new data',
-        action: 'Retrain a chatbot',
-      },
-      {
-        name: 'Send a Message',
-        value: 'sendMessage',
-        description: 'Send a message to a chat',
-        action: 'Send a message to a chat',
-      },
-      {
-        name: 'Update Base Prompt',
-        value: 'updateBasePrompt',
-        description: 'Update a chatbot\'s base prompt',
-        action: 'Update a base prompt',
-      },
     ],
-    default: 'createChatbot',
+    default: 'sendMessage',
   },
 ];
 
@@ -197,199 +174,6 @@ const sendMessageOperation: INodeProperties[] = [
         type: 'boolean',
         default: false,
         description: 'Whether to stream back partial progress or wait for the full response',
-      },
-    ],
-  },
-];
-
-// Fields for the 'updateBasePrompt' operation
-const updateBasePromptOperation: INodeProperties[] = [
-  {
-    displayName: 'Chatbot Name or ID',
-    name: 'chatbot_id',
-    type: 'options',
-    description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-    typeOptions: {
-      loadOptionsMethod: 'getChatbots',
-    },
-    default: '',
-    required: true,
-    displayOptions: {
-      show: {
-        resource: ['action'],
-        operation: ['updateBasePrompt'],
-      },
-    },
-  },
-  {
-    displayName: 'Base Prompt',
-    name: 'basePrompt',
-    type: 'string',
-    typeOptions: {
-      rows: 5,
-    },
-    default: '',
-    required: true,
-    displayOptions: {
-      show: {
-        resource: ['action'],
-        operation: ['updateBasePrompt'],
-      },
-    },
-    description: 'The new base prompt for the chatbot',
-  },
-];
-
-// Fields for the 'retrainChatbot' operation
-const retrainChatbotOperation: INodeProperties[] = [
-  {
-    displayName: 'Chatbot Name or ID',
-    name: 'chatbot_id',
-    type: 'options',
-    description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-    typeOptions: {
-      loadOptionsMethod: 'getChatbots',
-    },
-    default: '',
-    required: true,
-    displayOptions: {
-      show: {
-        resource: ['action'],
-        operation: ['retrainChatbot'],
-      },
-    },
-  },
-  {
-    displayName: 'Source Text',
-    name: 'sourceText',
-    type: 'string',
-    typeOptions: {
-      rows: 5,
-    },
-    default: '',
-    displayOptions: {
-      show: {
-        resource: ['action'],
-        operation: ['retrainChatbot'],
-      },
-    },
-    description: 'Custom text to train the chatbot with',
-  },
-  {
-    displayName: 'Questions & Answers',
-    name: 'qAndAs',
-    placeholder: 'Add Q&A',
-    type: 'fixedCollection',
-    typeOptions: {
-      multipleValues: true,
-      sortable: true,
-    },
-    default: {},
-    displayOptions: {
-      show: {
-        resource: ['action'],
-        operation: ['retrainChatbot'],
-      },
-    },
-    options: [
-      {
-        name: 'qAndAValues',
-        displayName: 'Q&A Pair',
-        values: [
-          {
-            displayName: 'Question',
-            name: 'question',
-            type: 'string',
-            default: '',
-            description: 'The question on a specific topic',
-            required: true,
-          },
-          {
-            displayName: 'Answer',
-            name: 'answer',
-            type: 'string',
-            typeOptions: {
-              rows: 3,
-            },
-            default: '',
-            description: 'The answer to the question',
-            required: true,
-          },
-        ],
-      },
-    ],
-  },
-  {
-    displayName: 'URLs to Scrape',
-    name: 'urlsToScrape',
-    placeholder: 'Add URL',
-    type: 'fixedCollection',
-    typeOptions: {
-      multipleValues: true,
-    },
-    default: {},
-    displayOptions: {
-      show: {
-        resource: ['action'],
-        operation: ['retrainChatbot'],
-      },
-    },
-    options: [
-      {
-        name: 'urlValues',
-        displayName: 'URL',
-        values: [
-          {
-            displayName: 'URL',
-            name: 'url',
-            type: 'string',
-            default: '',
-            description: 'The URL to scrape for training the chatbot',
-          },
-        ],
-      },
-    ],
-  },
-  {
-    displayName: 'Scraping Options',
-    name: 'options',
-    type: 'collection',
-    placeholder: 'Add Option',
-    default: {},
-    displayOptions: {
-      show: {
-        resource: ['action'],
-        operation: ['retrainChatbot'],
-      },
-    },
-    options: [
-      {
-        displayName: 'Cookies',
-        name: 'Cookies',
-        type: 'string',
-        default: '',
-        description: 'A list of cookies separated by semicolons to authorize the scraping process',
-      },
-      {
-        displayName: 'Extract Main Content',
-        name: 'extractMainContent',
-        type: 'boolean',
-        default: true,
-        description: 'Whether to automatically remove common non-content elements',
-      },
-      {
-        displayName: 'Include Only Tags',
-        name: 'includeOnlyTags',
-        type: 'string',
-        default: '',
-        description: 'A comma-separated list of CSS selectors representing DOM elements to exclusively extract',
-      },
-      {
-        displayName: 'Exclude Tags',
-        name: 'excludeTags',
-        type: 'string',
-        default: '',
-        description: 'A comma-separated list of CSS selectors representing DOM elements to exclude from the scraping result',
       },
     ],
   },
@@ -626,153 +410,6 @@ const getConversationsOperation: INodeProperties[] = [
   },
 ];
 
-// Fields for the 'getChatbotStatus' operation
-const getChatbotStatusOperation: INodeProperties[] = [
-  {
-    displayName: 'Chatbot Name or ID',
-    name: 'chatbot_id',
-    type: 'options',
-    description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-    typeOptions: {
-      loadOptionsMethod: 'getChatbots',
-    },
-    default: '',
-    required: true,
-    displayOptions: {
-      show: {
-        resource: ['action'],
-        operation: ['getChatbotStatus'],
-      },
-    },
-  },
-];
-
-// Fields for the 'createChatbot' operation
-const createChatbotOperation: INodeProperties[] = [
-  {
-    displayName: 'Chatbot Name',
-    name: 'chatbotName',
-    type: 'string',
-    default: '',
-    required: true,
-    displayOptions: {
-      show: {
-        resource: ['action'],
-        operation: ['createChatbot'],
-      },
-    },
-    description: 'Name of the chatbot to create',
-  },
-  {
-    displayName: 'Model',
-    name: 'model',
-    type: 'options',
-    options: [
-      {
-        name: 'Train With Your Own Knowledge Base',
-        value: 'custom-data-upload',
-      },
-      {
-        name: 'Veterinarity Medical Chat Model',
-        value: 'medical-chat-vet',
-      },
-      {
-        name: 'Human Medical Chat Model',
-        value: 'medical-chat-human',
-      },
-      {
-        name: 'Your Own Backend Endpoint',
-        value: 'custom-model',
-      },
-    ],
-    default: 'custom-data-upload',
-    displayOptions: {
-      show: {
-        resource: ['action'],
-        operation: ['createChatbot'],
-      },
-    },
-    description: 'The model to use for the chatbot',
-  },
-  {
-    displayName: 'Source Text',
-    name: 'sourceText',
-    type: 'string',
-    typeOptions: {
-      rows: 5,
-    },
-    default: '',
-    displayOptions: {
-      show: {
-        resource: ['action'],
-        operation: ['createChatbot'],
-				model: ['custom-data-upload'],
-      },
-    },
-    description: 'Text to train the chatbot with',
-  },
-  {
-    displayName: 'Custom Backend',
-    name: 'customBackend',
-    type: 'string',
-    default: '',
-    displayOptions: {
-      show: {
-        resource: ['action'],
-        operation: ['createChatbot'],
-        model: ['custom-model'],
-      },
-    },
-    description: 'The custom backend endpoint. Only used when model is custom-model.',
-  },
-  {
-    displayName: 'Bearer Token',
-    name: 'bearer',
-    type: 'string',
-    default: '',
-    displayOptions: {
-      show: {
-        resource: ['action'],
-        operation: ['createChatbot'],
-        model: ['custom-model'],
-      },
-    },
-    description: 'The bearer token to authorize the custom backend',
-  },
-  {
-    displayName: 'URLs to Scrape',
-    name: 'urlsToScrape',
-    placeholder: 'Add URL',
-    type: 'fixedCollection',
-    typeOptions: {
-      multipleValues: true,
-    },
-    default: {},
-    displayOptions: {
-      show: {
-        resource: ['action'],
-        operation: ['createChatbot'],
-				model: ['custom-data-upload'],
-      },
-    },
-    options: [
-      {
-        name: 'urlValues',
-        displayName: 'URL',
-        values: [
-          {
-            displayName: 'URL',
-            name: 'url',
-            type: 'string',
-            default: '',
-            description: 'The URL to scrape for training the chatbot',
-          },
-        ],
-      },
-    ],
-  },
-];
-
 // Fields for the 'makeApiCall' operation
 const makeApiCallOperation: INodeProperties[] = [
   {
@@ -948,11 +585,7 @@ const makeApiCallOperation: INodeProperties[] = [
 // Combine all fields
 export const actionFields: INodeProperties[] = [
   ...sendMessageOperation,
-  ...updateBasePromptOperation,
-  ...retrainChatbotOperation,
   ...getLeadsOperation,
   ...getConversationsOperation,
-  ...getChatbotStatusOperation,
-  ...createChatbotOperation,
   ...makeApiCallOperation,
 ];

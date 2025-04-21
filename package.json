@@ -1,15 +1,21 @@
 {
   "name": "n8n-nodes-chat-data",
-  "version": "0.1.0",
-  "description": "",
+  "version": "1.0.0",
+  "description": "Chatdata integration for n8n. Manage chatbots, send messages, and retrieve leads from your Chatdata account.",
   "keywords": [
-    "n8n-community-node-package"
+    "n8n-community-node-package",
+    "chatbots",
+    "chat-data",
+    "AI agents",
+    "conversations",
+    "customer support"
   ],
   "license": "MIT",
-  "homepage": "",
+  "homepage": "https://chat-data.com",
   "author": {
-    "name": "Chat Data",
-    "email": "admin@chat-data.com"
+    "name": "Yongrui Su",
+    "email": "admin@chat-data.com",
+    "url": "https://chat-data.com"
   },
   "repository": {
     "type": "git",
