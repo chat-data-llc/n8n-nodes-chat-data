@@ -52,13 +52,36 @@ The operations in this node are organized into the following categories:
 
 - **Make API Call**: Make a custom request to any Chat Data API endpoint
 
-#### Triggers
+---
 
-Triggers in the ChatData node:
+### Chat Data Trigger
+
+This node is used to receive real-time events from Chat Data via webhooks. You can find it in the 'Trigger' category in n8n.
+
+#### Available Triggers
 
 - **On New Message**: Triggered when a new chat message is received
 - **On Lead Submission**: Triggered when a customer submits lead information
 - **On Live Chat Escalation**: Triggered when a chat is escalated to a human agent
+
+1. After setting up the trigger, you'll see webhook registration details in the execution output
+2. When a webhook event is received, the node logs detailed information about:
+   - Raw webhook payload
+   - Parsed event data
+   - Event type matching
+   - Chatbot ID verification
+
+> **Note:** If your webhook isn't triggering as expected, check the n8n logs for messages starting with "Webhook triggered" to see detailed information about incoming data.
+
+> **Important:** For webhook testing, ensure the `chatbot_id` in your trigger configuration matches the `chatbot_id` field in the incoming webhook payload.
+
+---
+
+## Migration Notice
+
+> **If you are upgrading from a previous version:**
+>
+> Triggers (webhook-based events) have been moved from the main Chat Data node to a new, dedicated node called **Chat Data Trigger**. Please update your workflows to use the new trigger node for webhook-based automations.
 
 ## Authentication
 

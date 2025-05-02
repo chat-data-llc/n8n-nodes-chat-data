@@ -1,5 +1,13 @@
 import { INodeProperties } from 'n8n-workflow';
 
+// Define the resource property for the trigger
+export const triggerResource: INodeProperties = {
+  displayName: 'Resource',
+  name: 'resource',
+  type: 'hidden',
+  default: 'trigger',
+};
+
 // Operations for the 'trigger' resource
 export const triggerOperations: INodeProperties[] = [
   {
@@ -35,6 +43,7 @@ export const triggerOperations: INodeProperties[] = [
     default: 'onNewMessage',
   },
 ];
+
 // Fields for the 'onLeadSubmission' operation
 export const onLeadSubmissionOperation: INodeProperties[] = [
   {
@@ -73,12 +82,6 @@ export const onLeadSubmissionOperation: INodeProperties[] = [
     type: 'collection',
     placeholder: 'Add Options',
     default: {},
-    displayOptions: {
-      show: {
-        resource: ['trigger'],
-        operation: ['onLeadSubmission'],
-      },
-    },
     options: [
       {
         displayName: 'Enable Webhook Debug',
@@ -88,6 +91,12 @@ export const onLeadSubmissionOperation: INodeProperties[] = [
         description: 'Whether to turn on additional logging for webhook debugging',
       },
     ],
+    displayOptions: {
+      show: {
+        resource: ['trigger'],
+        operation: ['onLeadSubmission'],
+      },
+    },
   },
 ];
 
@@ -129,12 +138,6 @@ export const onLiveChatEscalationOperation: INodeProperties[] = [
     type: 'collection',
     placeholder: 'Add Options',
     default: {},
-    displayOptions: {
-      show: {
-        resource: ['trigger'],
-        operation: ['onLiveChatEscalation'],
-      },
-    },
     options: [
       {
         displayName: 'Enable Webhook Debug',
@@ -144,6 +147,12 @@ export const onLiveChatEscalationOperation: INodeProperties[] = [
         description: 'Whether to turn on additional logging for webhook debugging',
       },
     ],
+    displayOptions: {
+      show: {
+        resource: ['trigger'],
+        operation: ['onLiveChatEscalation'],
+      },
+    },
   },
 ];
 
@@ -185,12 +194,6 @@ export const onNewMessageOperation: INodeProperties[] = [
     type: 'collection',
     placeholder: 'Add Options',
     default: {},
-    displayOptions: {
-      show: {
-        resource: ['trigger'],
-        operation: ['onNewMessage'],
-      },
-    },
     options: [
       {
         displayName: 'Enable Webhook Debug',
@@ -200,6 +203,12 @@ export const onNewMessageOperation: INodeProperties[] = [
         description: 'Whether to turn on additional logging for webhook debugging',
       },
     ],
+    displayOptions: {
+      show: {
+        resource: ['trigger'],
+        operation: ['onNewMessage'],
+      },
+    },
   },
 ];
 
