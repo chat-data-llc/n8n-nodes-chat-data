@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-chat-data",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Chatdata integration for n8n. Manage chatbots, send messages, and retrieve leads from your Chatdata account.",
   "keywords": [
     "n8n-community-node-package",
@@ -45,7 +45,8 @@
       "dist/credentials/ChatDataApi.credentials.js"
     ],
     "nodes": [
-      "dist/nodes/ChatData/ChatData.node.js"
+      "dist/nodes/ChatData/ChatData.node.js",
+      "dist/nodes/ChatData/ChatDataTrigger.node.js"
     ]
   },
   "devDependencies": {
