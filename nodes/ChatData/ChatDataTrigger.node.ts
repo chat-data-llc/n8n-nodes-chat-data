@@ -248,9 +248,13 @@ export class ChatDataTrigger implements INodeType {
 		}
 
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(bodyData)
-			],
+			workflowData: [this.helpers.returnJsonArray([{
+				...bodyData,
+				pairedItem: {
+					item: 0,
+					input: 0
+				}
+			}])]
 		};
 	}
 

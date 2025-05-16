@@ -217,18 +217,21 @@ export class ChatData implements INodeType {
 						const baseUrlFormatted = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
 						const fullUrl = `${baseUrlFormatted}/api/v2/chat`;
 
-						const response = await this.helpers.httpRequest({
-							url: fullUrl,
-							method: 'POST',
-							body,
-							headers: {
-								Authorization: `Bearer ${credentials.apiKey}`,
-								'Accept': 'application/json',
-								'Content-Type': 'application/json',
-							},
-							json: true,
-							ignoreHttpStatusErrors: true,
-						});
+						const response = await this.helpers.httpRequestWithAuthentication.call(
+							this,
+							'chatDataApi',
+							{
+								url: fullUrl,
+								method: 'POST',
+								body,
+								headers: {
+									'Accept': 'application/json',
+									'Content-Type': 'application/json',
+								},
+								json: true,
+								ignoreHttpStatusErrors: true,
+							}
+						);
 
 						// Check for error
 						if (response.status === 'error') {
@@ -238,6 +241,10 @@ export class ChatData implements INodeType {
 						const newItem = {
 							json: {
 								output: response,
+							},
+							pairedItem: {
+								item: i,
+								input: 0
 							}
 						};
 
@@ -268,7 +275,10 @@ export class ChatData implements INodeType {
 									...items[i].json,
 									error: errorMessage,
 								},
-								pairedItem: i,
+								pairedItem: {
+									item: i,
+									input: 0
+								}
 							});
 							continue;
 						}
@@ -277,260 +287,292 @@ export class ChatData implements INodeType {
 				}
 			} else if (operation === 'getLeads') {
 				// Handle getLeads operation
-				try {
-					const chatbotId = this.getNodeParameter('chatbot_id', 0) as string;
-					const limit = this.getNodeParameter('limit', 0) as number;
-					const additionalFields = this.getNodeParameter('additionalFields', 0, {}) as IDataObject;
+				for (let i = 0; i < items.length; i++) {
+					try {
+						const chatbotId = this.getNodeParameter('chatbot_id', i) as string;
+						const limit = this.getNodeParameter('limit', i) as number;
+						const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
 
-					// Prepare pagination items
-					const returnData: INodeExecutionData[] = [];
-					let responseData: IDataObject[] = [];
+						// Prepare pagination items
+						let responseData: IDataObject[] = [];
 
-					// Prepare parameters for all requests
-					const qs: IDataObject = {
-						size: 100, // Fixed page size
-					};
+						// Prepare parameters for all requests
+						const qs: IDataObject = {
+							size: 100, // Fixed page size
+						};
 
-					// Format dates if provided
-					if (additionalFields.startDate) {
-						const startDate = new Date(additionalFields.startDate as string);
-						qs.startTimestamp = startDate.getTime().toString();
-					}
-
-					if (additionalFields.endDate) {
-						const endDate = new Date(additionalFields.endDate as string);
-						qs.endTimestamp = endDate.getTime().toString();
-					}
-
-					// Add source if provided
-					if (additionalFields.source) {
-						qs.source = additionalFields.source;
-					}
-
-					// Initialize variables for pagination
-					let hasNextPage = true;
-					let pageNumber = 0;
-					const credentials = await this.getCredentials('chatDataApi');
-					const baseUrl = credentials.baseUrl as string;
-					// Fetch data with pagination
-					while (hasNextPage) {
-						// Calculate start parameter for current page
-						if (pageNumber > 0) {
-							qs.start = (pageNumber * 100).toString();
+						// Format dates if provided
+						if (additionalFields.startDate) {
+							const startDate = new Date(additionalFields.startDate as string);
+							qs.startTimestamp = startDate.getTime().toString();
 						}
 
-						// Make the request
-						const endpoint = `/get-customers/${chatbotId}`;
-
-						const baseUrlFormatted = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
-						const fullUrl = `${baseUrlFormatted}/api/v2${endpoint}`;
-
-						const response = await this.helpers.httpRequest({
-							url: fullUrl,
-							method: 'GET',
-							qs,
-							headers: {
-								Authorization: `Bearer ${credentials.apiKey}`,
-								'Accept': 'application/json',
-								'Content-Type': 'application/json',
-							},
-							json: true,
-							ignoreHttpStatusErrors: true,
-						});
-
-						// Check for error
-						if (response.status === 'error') {
-							throw new NodeOperationError(this.getNode(), response.message, { itemIndex: 0 });
+						if (additionalFields.endDate) {
+							const endDate = new Date(additionalFields.endDate as string);
+							qs.endTimestamp = endDate.getTime().toString();
 						}
 
-						// Check if we have valid data
-						if (response && response.customers && Array.isArray(response.customers)) {
-							// Add this page's data
-							responseData = [...responseData, ...response.customers];
+						// Add source if provided
+						if (additionalFields.source) {
+							qs.source = additionalFields.source;
+						}
 
-							// Check if there are more pages
-							const totalResults = response.total as number;
-							hasNextPage = totalResults > (pageNumber + 1) * 100;
-
-							// Check if we've reached the user-specified limit
-							if (limit > 0 && responseData.length >= limit) {
-								responseData = responseData.slice(0, limit);
-								hasNextPage = false;
-								break;
+						// Initialize variables for pagination
+						let hasNextPage = true;
+						let pageNumber = 0;
+						const credentials = await this.getCredentials('chatDataApi');
+						const baseUrl = credentials.baseUrl as string;
+						// Fetch data with pagination
+						while (hasNextPage) {
+							// Calculate start parameter for current page
+							if (pageNumber > 0) {
+								qs.start = (pageNumber * 100).toString();
 							}
 
-							// Move to next page
-							pageNumber++;
-						} else {
-							// No valid data or error
-							hasNextPage = false;
-						}
-					}
+							// Make the request
+							const endpoint = `/get-customers/${chatbotId}`;
 
-					// Map the data to items
-					for (const item of responseData) {
-						returnData.push({
-							json: item,
-						});
-					}
+							const baseUrlFormatted = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+							const fullUrl = `${baseUrlFormatted}/api/v2${endpoint}`;
 
-					return [returnData];
-				} catch (error) {
-					let errorMessage = error.message;
-
-					// Extract error message from response body
-					if (error.response && error.response.body) {
-						const responseBody = error.response.body;
-						if (typeof responseBody === 'object' && responseBody.message) {
-							errorMessage = responseBody.message;
-						} else if (typeof responseBody === 'string') {
-							try {
-								const parsedBody = JSON.parse(responseBody);
-								if (parsedBody.message) {
-									errorMessage = parsedBody.message;
+							const response = await this.helpers.httpRequestWithAuthentication.call(
+								this,
+								'chatDataApi',
+								{
+									url: fullUrl,
+									method: 'GET',
+									qs,
+									headers: {
+										'Accept': 'application/json',
+										'Content-Type': 'application/json',
+									},
+									json: true,
+									ignoreHttpStatusErrors: true,
 								}
-							} catch (e) {
-								// JSON parsing failed, use original error
+							);
+
+							// Check for error
+							if (response.status === 'error') {
+								throw new NodeOperationError(this.getNode(), response.message, { itemIndex: i });
+							}
+
+							// Check if we have valid data
+							if (response && response.customers && Array.isArray(response.customers)) {
+								// Add this page's data
+								responseData = [...responseData, ...response.customers];
+
+								// Check if there are more pages
+								const totalResults = response.total as number;
+								hasNextPage = totalResults > (pageNumber + 1) * 100;
+
+								// Check if we've reached the user-specified limit
+								if (limit > 0 && responseData.length >= limit) {
+									responseData = responseData.slice(0, limit);
+									hasNextPage = false;
+									break;
+								}
+
+								// Move to next page
+								pageNumber++;
+							} else {
+								// No valid data or error
+								hasNextPage = false;
 							}
 						}
-					}
 
-					if (this.continueOnFail()) {
-						return [[{ json: { error: errorMessage } }]];
+						// Map the data to items
+						for (const item of responseData) {
+							returnData.push({
+								json: item,
+								pairedItem: {
+									item: i,
+									input: 0
+								}
+							});
+						}
+					} catch (error) {
+						let errorMessage = error.message;
+
+						// Extract error message from response body
+						if (error.response && error.response.body) {
+							const responseBody = error.response.body;
+							if (typeof responseBody === 'object' && responseBody.message) {
+								errorMessage = responseBody.message;
+							} else if (typeof responseBody === 'string') {
+								try {
+									const parsedBody = JSON.parse(responseBody);
+									if (parsedBody.message) {
+										errorMessage = parsedBody.message;
+									}
+								} catch (e) {
+									// JSON parsing failed, use original error
+								}
+							}
+						}
+
+						if (this.continueOnFail()) {
+							returnData.push({
+								json: {
+									...items[i].json,
+									error: errorMessage,
+								},
+								pairedItem: {
+									item: i,
+									input: 0
+								}
+							});
+							continue;
+						}
+						throw new NodeOperationError(this.getNode(), errorMessage, { itemIndex: i });
 					}
-					throw error;
 				}
 			} else if (operation === 'getConversations') {
 				// Handle getConversations operation
-				try {
-					const chatbotId = this.getNodeParameter('chatbot_id', 0) as string;
-					const limit = this.getNodeParameter('limit', 0) as number;
-					const additionalFields = this.getNodeParameter('additionalFields', 0, {}) as IDataObject;
+				for (let i = 0; i < items.length; i++) {
+					try {
+						const chatbotId = this.getNodeParameter('chatbot_id', i) as string;
+						const limit = this.getNodeParameter('limit', i) as number;
+						const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
 
-					// Prepare pagination items
-					const returnData: INodeExecutionData[] = [];
-					let responseData: IDataObject[] = [];
+						// Prepare pagination items
+						let responseData: IDataObject[] = [];
 
-					// Prepare parameters for all requests
-					const qs: IDataObject = {
-						size: 100, // Fixed page size
-					};
+						// Prepare parameters for all requests
+						const qs: IDataObject = {
+							size: 100, // Fixed page size
+						};
 
-					// Format dates if provided
-					if (additionalFields.startDate) {
-						const startDate = new Date(additionalFields.startDate as string);
-						qs.startTimestamp = startDate.getTime().toString();
-					}
-
-					if (additionalFields.endDate) {
-						const endDate = new Date(additionalFields.endDate as string);
-						qs.endTimestamp = endDate.getTime().toString();
-					}
-
-					// Add source if provided
-					if (additionalFields.source) {
-						qs.source = additionalFields.source;
-					}
-
-					// Add leadId if provided
-					if (additionalFields.leadId) {
-						qs.leadId = additionalFields.leadId;
-					}
-
-					// Initialize variables for pagination
-					let hasNextPage = true;
-					let pageNumber = 0;
-
-					// Fetch data with pagination
-					while (hasNextPage) {
-						// Calculate start parameter for current page
-						if (pageNumber > 0) {
-							qs.start = (pageNumber * 100).toString();
+						// Format dates if provided
+						if (additionalFields.startDate) {
+							const startDate = new Date(additionalFields.startDate as string);
+							qs.startTimestamp = startDate.getTime().toString();
 						}
 
-						// Make the request
-						const endpoint = `/get-conversations/${chatbotId}`;
-
-						const credentials = await this.getCredentials('chatDataApi');
-						const baseUrl = credentials.baseUrl as string;
-						const baseUrlFormatted = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
-						const fullUrl = `${baseUrlFormatted}/api/v2${endpoint}`;
-						const response = await this.helpers.httpRequest({
-							url: fullUrl,
-							method: 'GET',
-							qs,
-							headers: {
-								Authorization: `Bearer ${credentials.apiKey}`,
-								'Accept': 'application/json',
-								'Content-Type': 'application/json',
-							},
-							json: true,
-							ignoreHttpStatusErrors: true,
-						});
-
-						// Check for error
-						if (response.status === 'error') {
-							throw new NodeOperationError(this.getNode(), response.message, { itemIndex: 0 });
+						if (additionalFields.endDate) {
+							const endDate = new Date(additionalFields.endDate as string);
+							qs.endTimestamp = endDate.getTime().toString();
 						}
 
-						// Check if we have valid data
-						if (response && response.conversations && Array.isArray(response.conversations)) {
-							// Add this page's data
-							responseData = [...responseData, ...response.conversations];
+						// Add source if provided
+						if (additionalFields.source) {
+							qs.source = additionalFields.source;
+						}
 
-							// Check if there are more pages
-							const totalResults = response.total as number;
-							hasNextPage = totalResults > (pageNumber + 1) * 100;
+						// Add leadId if provided
+						if (additionalFields.leadId) {
+							qs.leadId = additionalFields.leadId;
+						}
 
-							// Check if we've reached the user-specified limit
-							if (limit > 0 && responseData.length >= limit) {
-								responseData = responseData.slice(0, limit);
-								hasNextPage = false;
-								break;
+						// Initialize variables for pagination
+						let hasNextPage = true;
+						let pageNumber = 0;
+
+						// Fetch data with pagination
+						while (hasNextPage) {
+							// Calculate start parameter for current page
+							if (pageNumber > 0) {
+								qs.start = (pageNumber * 100).toString();
 							}
 
-							// Move to next page
-							pageNumber++;
-						} else {
-							// No valid data or error
-							hasNextPage = false;
-						}
-					}
+							// Make the request
+							const endpoint = `/get-conversations/${chatbotId}`;
 
-					// Map the data to items
-					for (const item of responseData) {
-						returnData.push({
-							json: item,
-						});
-					}
-
-					return [returnData];
-				} catch (error) {
-					let errorMessage = error.message;
-
-					// Extract error message from response body
-					if (error.response && error.response.body) {
-						const responseBody = error.response.body;
-						if (typeof responseBody === 'object' && responseBody.message) {
-							errorMessage = responseBody.message;
-						} else if (typeof responseBody === 'string') {
-							try {
-								const parsedBody = JSON.parse(responseBody);
-								if (parsedBody.message) {
-									errorMessage = parsedBody.message;
+							const credentials = await this.getCredentials('chatDataApi');
+							const baseUrl = credentials.baseUrl as string;
+							const baseUrlFormatted = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+							const fullUrl = `${baseUrlFormatted}/api/v2${endpoint}`;
+							const response = await this.helpers.httpRequestWithAuthentication.call(
+								this,
+								'chatDataApi',
+								{
+									url: fullUrl,
+									method: 'GET',
+									qs,
+									headers: {
+										'Accept': 'application/json',
+										'Content-Type': 'application/json',
+									},
+									json: true,
+									ignoreHttpStatusErrors: true,
 								}
-							} catch (e) {
-								// JSON parsing failed, use original error
+							);
+
+							// Check for error
+							if (response.status === 'error') {
+								throw new NodeOperationError(this.getNode(), response.message, { itemIndex: i });
+							}
+
+							// Check if we have valid data
+							if (response && response.conversations && Array.isArray(response.conversations)) {
+								// Add this page's data
+								responseData = [...responseData, ...response.conversations];
+
+								// Check if there are more pages
+								const totalResults = response.total as number;
+								hasNextPage = totalResults > (pageNumber + 1) * 100;
+
+								// Check if we've reached the user-specified limit
+								if (limit > 0 && responseData.length >= limit) {
+									responseData = responseData.slice(0, limit);
+									hasNextPage = false;
+									break;
+								}
+
+								// Move to next page
+								pageNumber++;
+							} else {
+								// No valid data or error
+								hasNextPage = false;
 							}
 						}
-					}
 
-					if (this.continueOnFail()) {
-						return [[{ json: { error: errorMessage } }]];
+						// Map the data to items
+						for (const item of responseData) {
+							returnData.push({
+								json: item,
+								pairedItem: {
+									item: i,
+									input: 0
+								}
+							});
+						}
+					} catch (error) {
+						let errorMessage = error.message;
+
+						// Extract error message from response body
+						if (error.response && error.response.body) {
+							const responseBody = error.response.body;
+							if (typeof responseBody === 'object' && responseBody.message) {
+								errorMessage = responseBody.message;
+							} else if (typeof responseBody === 'string') {
+								try {
+									const parsedBody = JSON.parse(responseBody);
+									if (parsedBody.message) {
+										errorMessage = parsedBody.message;
+									}
+								} catch (e) {
+									// JSON parsing failed, use original error
+								}
+							}
+						}
+
+						if (this.continueOnFail()) {
+							returnData.push({
+								json: {
+									...items[i].json,
+									error: errorMessage,
+								},
+								pairedItem: {
+									item: i,
+									input: 0
+								}
+							});
+							continue;
+						}
+						throw new NodeOperationError(this.getNode(), errorMessage, { itemIndex: i });
 					}
-					throw error;
 				}
-			}else if (operation === 'makeApiCall') {
+			} else if (operation === 'makeApiCall') {
 				// Handle makeApiCall operation
 				try {
 					// Get main parameters
@@ -613,7 +655,11 @@ export class ChatData implements INodeType {
 					// Add ignoreHttpStatusErrors option
 					requestOptions.ignoreHttpStatusErrors = true;
 
-					const response = await this.helpers.httpRequest(requestOptions);
+					const response = await this.helpers.httpRequestWithAuthentication.call(
+						this,
+						'chatDataApi',
+						requestOptions
+					);
 
 					// Check for error
 					if (response && response.status === 'error') {
@@ -630,6 +676,10 @@ export class ChatData implements INodeType {
 
 					const returnItem = {
 						json: responseData,
+						pairedItem: {
+							item: 0,
+							input: 0
+						}
 					};
 
 					return [[returnItem]];
@@ -658,6 +708,10 @@ export class ChatData implements INodeType {
 							json: {
 								error: errorMessage,
 								statusCode: error.statusCode || 500,
+							},
+							pairedItem: {
+								item: 0,
+								input: 0
 							}
 						}]];
 					}
@@ -685,18 +739,21 @@ export class ChatData implements INodeType {
 						const baseUrlFormatted = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
 						const fullUrl = `${baseUrlFormatted}/api/v2/update-chatbot-settings`;
 
-						const response = await this.helpers.httpRequest({
-							url: fullUrl,
-							method: 'POST',
-							body,
-							headers: {
-								Authorization: `Bearer ${credentials.apiKey}`,
-								'Accept': 'application/json',
-								'Content-Type': 'application/json',
-							},
-							json: true,
-							ignoreHttpStatusErrors: true,
-						});
+						const response = await this.helpers.httpRequestWithAuthentication.call(
+							this,
+							'chatDataApi',
+							{
+								url: fullUrl,
+								method: 'POST',
+								body,
+								headers: {
+									'Accept': 'application/json',
+									'Content-Type': 'application/json',
+								},
+								json: true,
+								ignoreHttpStatusErrors: true,
+							}
+						);
 
 						// Check for error
 						if (response.status === 'error') {
@@ -710,6 +767,10 @@ export class ChatData implements INodeType {
 								success: true,
 								chatbotId,
 							},
+							pairedItem: {
+								item: i,
+								input: 0
+							}
 						};
 
 						returnData.push(newItem);
@@ -739,7 +800,10 @@ export class ChatData implements INodeType {
 									...items[i].json,
 									error: errorMessage,
 								},
-								pairedItem: i,
+								pairedItem: {
+									item: i,
+									input: 0
+								}
 							});
 							continue;
 						}
@@ -793,18 +857,21 @@ export class ChatData implements INodeType {
 						const baseUrlFormatted = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
 						const fullUrl = `${baseUrlFormatted}/api/v2/retrain-chatbot`;
 
-						const response = await this.helpers.httpRequest({
-							url: fullUrl,
-							method: 'POST',
-							body,
-							headers: {
-								Authorization: `Bearer ${credentials.apiKey}`,
-								'Accept': 'application/json',
-								'Content-Type': 'application/json',
-							},
-							json: true,
-							ignoreHttpStatusErrors: true,
-						});
+						const response = await this.helpers.httpRequestWithAuthentication.call(
+							this,
+							'chatDataApi',
+							{
+								url: fullUrl,
+								method: 'POST',
+								body,
+								headers: {
+									'Accept': 'application/json',
+									'Content-Type': 'application/json',
+								},
+								json: true,
+								ignoreHttpStatusErrors: true,
+							}
+						);
 
 						// Check for error
 						if (response.status === 'error') {
@@ -818,6 +885,10 @@ export class ChatData implements INodeType {
 								success: true,
 								chatbotId,
 							},
+							pairedItem: {
+								item: i,
+								input: 0
+							}
 						};
 
 						returnData.push(newItem);
@@ -847,7 +918,10 @@ export class ChatData implements INodeType {
 									...items[i].json,
 									error: errorMessage,
 								},
-								pairedItem: i,
+								pairedItem: {
+									item: i,
+									input: 0
+								}
 							});
 							continue;
 						}
@@ -867,17 +941,21 @@ export class ChatData implements INodeType {
 					const baseUrlFormatted = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
 					const fullUrl = `${baseUrlFormatted}/api/v2${endpoint}`;
 
-					const response = await this.helpers.httpRequest({
-						url: fullUrl,
-						method: 'GET',
-						headers: {
-							Authorization: `Bearer ${credentials.apiKey}`,
-							'Accept': 'application/json',
-							'Content-Type': 'application/json',
-						},
-						json: true,
-						ignoreHttpStatusErrors: true,
-					});
+					const response = await this.helpers.httpRequestWithAuthentication.call(
+						this,
+						'chatDataApi',
+						{
+							url: fullUrl,
+							method: 'GET',
+							qs: {},
+							headers: {
+								'Accept': 'application/json',
+								'Content-Type': 'application/json',
+							},
+							json: true,
+							ignoreHttpStatusErrors: true,
+						}
+					);
 
 					// Check for error
 					if (response.status === 'error') {
@@ -885,7 +963,13 @@ export class ChatData implements INodeType {
 					}
 
 					// Return the full response as a single item
-					return [[{ json: response }]];
+					return [[{
+						json: response,
+						pairedItem: {
+							item: 0,
+							input: 0
+						}
+					}]];
 				} catch (error) {
 					let errorMessage = error.message;
 
@@ -907,7 +991,13 @@ export class ChatData implements INodeType {
 					}
 
 					if (this.continueOnFail()) {
-						return [[{ json: { error: errorMessage } }]];
+						return [[{
+							json: { error: errorMessage },
+							pairedItem: {
+								item: 0,
+								input: 0
+							}
+						}]];
 					}
 					throw error;
 				}
@@ -957,18 +1047,21 @@ export class ChatData implements INodeType {
 					const baseUrlFormatted = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
 					const fullUrl = `${baseUrlFormatted}/api/v2/create-chatbot`;
 
-					const response = await this.helpers.httpRequest({
-						url: fullUrl,
-						method: 'POST',
-						body,
-						headers: {
-							Authorization: `Bearer ${credentials.apiKey}`,
-							'Accept': 'application/json',
-							'Content-Type': 'application/json',
-						},
-						json: true,
-						ignoreHttpStatusErrors: true,
-					});
+					const response = await this.helpers.httpRequestWithAuthentication.call(
+						this,
+						'chatDataApi',
+						{
+							url: fullUrl,
+							method: 'POST',
+							body,
+							headers: {
+								'Accept': 'application/json',
+								'Content-Type': 'application/json',
+							},
+							json: true,
+							ignoreHttpStatusErrors: true,
+						}
+					);
 
 					// Check for error
 					if (response.status === 'error') {
@@ -976,7 +1069,13 @@ export class ChatData implements INodeType {
 					}
 
 					// Return the response
-					return [[{ json: response }]];
+					return [[{
+						json: response,
+						pairedItem: {
+							item: 0,
+							input: 0
+						}
+					}]];
 				} catch (error) {
 					let errorMessage = error.message;
 					// Extract error message from response body
@@ -997,7 +1096,13 @@ export class ChatData implements INodeType {
 					}
 
 					if (this.continueOnFail()) {
-						return [[{ json: { error: errorMessage } }]];
+						return [[{
+							json: { error: errorMessage },
+							pairedItem: {
+								item: 0,
+								input: 0
+							}
+						}]];
 					}
 					throw error;
 				}

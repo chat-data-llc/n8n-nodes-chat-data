@@ -2,6 +2,7 @@ import {
 	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
+	IAuthenticateGeneric,
 } from 'n8n-workflow';
 
 export class ChatDataApi implements ICredentialType {
@@ -27,6 +28,15 @@ export class ChatDataApi implements ICredentialType {
 			description: 'The API Key of your Chat Data account',
 		},
 	];
+
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			headers: {
+				Authorization: '=Bearer {{$credentials.apiKey}}',
+			},
+		},
+	};
 
 	// The block below tells how this credential can be tested
 	test: ICredentialTestRequest = {
