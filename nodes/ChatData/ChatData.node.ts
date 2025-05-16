@@ -8,6 +8,7 @@ import {
 	NodeOperationError,
 	IDataObject,
 	IHttpRequestOptions,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 import {
@@ -34,8 +35,10 @@ export class ChatData implements INodeType {
 		defaults: {
 			name: 'Chat Data',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+		inputs: [NodeConnectionType.Main],
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+		outputs: [NodeConnectionType.Main],
 		icon: 'file:ChatData.svg',
 		subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
 		credentials: [

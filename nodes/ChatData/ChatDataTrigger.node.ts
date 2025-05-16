@@ -8,6 +8,7 @@ import {
 	INodePropertyOptions,
 	IExecuteFunctions,
 	INodeExecutionData,
+	NodeConnectionType,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import { triggerOperations, triggerFields, triggerResource } from './TriggerDescription';
@@ -25,7 +26,8 @@ export class ChatDataTrigger implements INodeType {
 			name: 'Chat Data Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+		outputs: [NodeConnectionType.Main],
 		webhooks: [
 			{
 				name: 'default',
