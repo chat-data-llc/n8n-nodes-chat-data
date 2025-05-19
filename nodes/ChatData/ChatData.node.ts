@@ -7,7 +7,6 @@ import {
 	INodeTypeDescription,
 	NodeOperationError,
 	IDataObject,
-	IHttpRequestOptions,
 	NodeConnectionType,
 } from 'n8n-workflow';
 
@@ -575,151 +574,6 @@ export class ChatData implements INodeType {
 						throw new NodeOperationError(this.getNode(), errorMessage, { itemIndex: i });
 					}
 				}
-			} else if (operation === 'makeApiCall') {
-				// Handle makeApiCall operation
-				try {
-					// Get main parameters
-					const url = this.getNodeParameter('url', 0) as string;
-					const method = this.getNodeParameter('method', 0) as string;
-					const responseFormat = this.getNodeParameter('responseFormat', 0) as string;
-
-					// Check if URL starts with '/api/v2/' and handle accordingly
-					let fullUrl = url;
-					if (url.startsWith('/api/v2/')) {
-						// URL is a relative path, append to base URL from credentials
-						const credentials = await this.getCredentials('chatDataApi');
-						const baseUrl = credentials.baseUrl as string;
-						const baseUrlFormatted = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
-						fullUrl = `${baseUrlFormatted}${url}`;
-					} else {
-						// URL must start with '/api/v2/'
-						throw new NodeOperationError(
-							this.getNode(),
-							'URL must start with "/api/v2/". Please use the format: /api/v2/your-endpoint',
-							{ itemIndex: 0 }
-						);
-					}
-
-					// Get credentials for authentication
-					const credentials = await this.getCredentials('chatDataApi');
-
-					// Process headers
-					const headerParameters = this.getNodeParameter('headers.parameters', 0, []) as IDataObject[];
-					const headers: IDataObject = {};
-
-					// Add user-defined headers
-					for (const param of headerParameters) {
-						headers[param.name as string] = param.value;
-					}
-
-					// Always add authentication header with the actual API key
-					headers['Authorization'] = `Bearer ${credentials.apiKey}`;
-
-					// Process query parameters
-					const queryParameters = this.getNodeParameter('qs.parameters', 0, []) as IDataObject[];
-					const qs: IDataObject = {};
-
-					for (const param of queryParameters) {
-						qs[param.name as string] = param.value;
-					}
-
-					// Process body for appropriate methods
-					let body;
-					if (['POST', 'PUT', 'PATCH'].includes(method)) {
-						const bodyParam = this.getNodeParameter('body', 0, '{}') as string;
-						try {
-							body = JSON.parse(bodyParam);
-						} catch (error) {
-							throw new NodeOperationError(
-								this.getNode(),
-								'Body must be a valid JSON object',
-								{ itemIndex: 0 }
-							);
-						}
-					}
-
-					// Prepare and make the request
-					const requestOptions: IHttpRequestOptions = {
-						url: fullUrl,
-						method: method as 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
-						headers: headers as Record<string, string>,
-					};
-
-					// Only add the following properties if they actually have values
-					if (Object.keys(qs).length > 0) {
-						requestOptions.qs = qs;
-					}
-
-					if (body !== undefined) {
-						requestOptions.body = body;
-						requestOptions.json = true;
-					}
-
-					// Add ignoreHttpStatusErrors option
-					requestOptions.ignoreHttpStatusErrors = true;
-
-					const response = await this.helpers.httpRequestWithAuthentication.call(
-						this,
-						'chatDataApi',
-						requestOptions
-					);
-
-					// Check for error
-					if (response && response.status === 'error') {
-						throw new NodeOperationError(this.getNode(), response.message, { itemIndex: 0 });
-					}
-
-					// Return response in the requested format
-					let responseData;
-					if (responseFormat === 'string' && typeof response === 'object') {
-						responseData = JSON.stringify(response);
-					} else {
-						responseData = response;
-					}
-
-					const returnItem = {
-						json: responseData,
-						pairedItem: {
-							item: 0,
-							input: 0
-						}
-					};
-
-					return [[returnItem]];
-				} catch (error) {
-					let errorMessage = error.message;
-
-					// Extract error message from response body
-					if (error.response && error.response.body) {
-						const responseBody = error.response.body;
-						if (typeof responseBody === 'object' && responseBody.message) {
-							errorMessage = responseBody.message;
-						} else if (typeof responseBody === 'string') {
-							try {
-								const parsedBody = JSON.parse(responseBody);
-								if (parsedBody.message) {
-									errorMessage = parsedBody.message;
-								}
-							} catch (e) {
-								// JSON parsing failed, use original error
-							}
-						}
-					}
-
-					if (this.continueOnFail()) {
-						return [[{
-							json: {
-								error: errorMessage,
-								statusCode: error.statusCode || 500,
-							},
-							pairedItem: {
-								item: 0,
-								input: 0
-							}
-						}]];
-					}
-					throw error;
-				}
 			}
 		} else if (resource === 'chatbot') {
 			// Handle chatbot operations
@@ -933,181 +787,193 @@ export class ChatData implements INodeType {
 				}
 			} else if (operation === 'getChatbotStatus') {
 				// Handle getChatbotStatus operation
-				try {
-					const chatbotId = this.getNodeParameter('chatbot_id', 0) as string;
+				for (let i = 0; i < items.length; i++) {
+					try {
+						const chatbotId = this.getNodeParameter('chatbot_id', i) as string;
 
-					// Make the request
-					const endpoint = `/chatbot/status/${chatbotId}`;
+						// Make the request
+						const endpoint = `/chatbot/status/${chatbotId}`;
 
-					const credentials = await this.getCredentials('chatDataApi');
-					const baseUrl = credentials.baseUrl as string;
-					const baseUrlFormatted = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
-					const fullUrl = `${baseUrlFormatted}/api/v2${endpoint}`;
+						const credentials = await this.getCredentials('chatDataApi');
+						const baseUrl = credentials.baseUrl as string;
+						const baseUrlFormatted = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+						const fullUrl = `${baseUrlFormatted}/api/v2${endpoint}`;
 
-					const response = await this.helpers.httpRequestWithAuthentication.call(
-						this,
-						'chatDataApi',
-						{
-							url: fullUrl,
-							method: 'GET',
-							qs: {},
-							headers: {
-								'Accept': 'application/json',
-								'Content-Type': 'application/json',
-							},
-							json: true,
-							ignoreHttpStatusErrors: true,
-						}
-					);
-
-					// Check for error
-					if (response.status === 'error') {
-						throw new NodeOperationError(this.getNode(), response.message, { itemIndex: 0 });
-					}
-
-					// Return the full response as a single item
-					return [[{
-						json: response,
-						pairedItem: {
-							item: 0,
-							input: 0
-						}
-					}]];
-				} catch (error) {
-					let errorMessage = error.message;
-
-					// Extract error message from response body
-					if (error.response && error.response.body) {
-						const responseBody = error.response.body;
-						if (typeof responseBody === 'object' && responseBody.message) {
-							errorMessage = responseBody.message;
-						} else if (typeof responseBody === 'string') {
-							try {
-								const parsedBody = JSON.parse(responseBody);
-								if (parsedBody.message) {
-									errorMessage = parsedBody.message;
-								}
-							} catch (e) {
-								// JSON parsing failed, use original error
+						const response = await this.helpers.httpRequestWithAuthentication.call(
+							this,
+							'chatDataApi',
+							{
+								url: fullUrl,
+								method: 'GET',
+								qs: {},
+								headers: {
+									'Accept': 'application/json',
+									'Content-Type': 'application/json',
+								},
+								json: true,
+								ignoreHttpStatusErrors: true,
 							}
-						}
-					}
+						);
 
-					if (this.continueOnFail()) {
-						return [[{
-							json: { error: errorMessage },
+						// Check for error
+						if (response.status === 'error') {
+							throw new NodeOperationError(this.getNode(), response.message, { itemIndex: i });
+						}
+
+						// Return the response with proper paired item
+						returnData.push({
+							json: response,
 							pairedItem: {
-								item: 0,
+								item: i,
 								input: 0
 							}
-						}]];
+						});
+					} catch (error) {
+						let errorMessage = error.message;
+
+						// Extract error message from response body
+						if (error.response && error.response.body) {
+							const responseBody = error.response.body;
+							if (typeof responseBody === 'object' && responseBody.message) {
+								errorMessage = responseBody.message;
+							} else if (typeof responseBody === 'string') {
+								try {
+									const parsedBody = JSON.parse(responseBody);
+									if (parsedBody.message) {
+										errorMessage = parsedBody.message;
+									}
+								} catch (e) {
+									// JSON parsing failed, use original error
+								}
+							}
+						}
+
+						if (this.continueOnFail()) {
+							returnData.push({
+								json: {
+									...items[i].json,
+									error: errorMessage,
+								},
+								pairedItem: {
+									item: i,
+									input: 0
+								}
+							});
+							continue;
+						}
+						throw new NodeOperationError(this.getNode(), errorMessage, { itemIndex: i });
 					}
-					throw error;
 				}
 			} else if (operation === 'createChatbot') {
-				try {
-					const chatbotName = this.getNodeParameter('chatbotName', 0) as string;
-					const model = this.getNodeParameter('model', 0) as string;
-					const sourceText = this.getNodeParameter('sourceText', 0, '') as string;
-					const urlsData = this.getNodeParameter('urlsToScrape.urlValues', 0, []) as IDataObject[];
+				for (let i = 0; i < items.length; i++) {
+					try {
+						const chatbotName = this.getNodeParameter('chatbotName', i) as string;
+						const model = this.getNodeParameter('model', i) as string;
+						const sourceText = this.getNodeParameter('sourceText', i, '') as string;
+						const urlsData = this.getNodeParameter('urlsToScrape.urlValues', i, []) as IDataObject[];
 
-					// Format URLs if provided
-					const urlsToScrape = urlsData.length ? urlsData.map((urlObj) => urlObj.url) : undefined;
+						// Format URLs if provided
+						const urlsToScrape = urlsData.length ? urlsData.map((urlObj) => urlObj.url) : undefined;
 
-					// Prepare request body
-					const body: IDataObject = {
-						chatbotName,
-						model,
-					};
+						// Prepare request body
+						const body: IDataObject = {
+							chatbotName,
+							model,
+						};
 
-					// Add optional parameters if they exist
-					if (sourceText) {
-						body.sourceText = sourceText;
-					}
-
-					if (Array.isArray(urlsToScrape) && urlsToScrape.length) {
-						body.urlsToScrape = urlsToScrape;
-					}
-
-					// Add custom backend parameters if using custom model
-					if (model === 'custom-model') {
-						const customBackend = this.getNodeParameter('customBackend', 0, '') as string;
-						const bearer = this.getNodeParameter('bearer', 0, '') as string;
-
-						if (customBackend) {
-							body.customBackend = customBackend;
+						// Add optional parameters if they exist
+						if (sourceText) {
+							body.sourceText = sourceText;
 						}
 
-						if (bearer) {
-							body.bearer = bearer;
+						if (Array.isArray(urlsToScrape) && urlsToScrape.length) {
+							body.urlsToScrape = urlsToScrape;
 						}
-					}
 
-					// Get credentials and construct full URL
-					const credentials = await this.getCredentials('chatDataApi');
-					const baseUrl = credentials.baseUrl as string;
+						// Add custom backend parameters if using custom model
+						if (model === 'custom-model') {
+							const customBackend = this.getNodeParameter('customBackend', i, '') as string;
+							const bearer = this.getNodeParameter('bearer', i, '') as string;
 
-					const baseUrlFormatted = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
-					const fullUrl = `${baseUrlFormatted}/api/v2/create-chatbot`;
+							if (customBackend) {
+								body.customBackend = customBackend;
+							}
 
-					const response = await this.helpers.httpRequestWithAuthentication.call(
-						this,
-						'chatDataApi',
-						{
-							url: fullUrl,
-							method: 'POST',
-							body,
-							headers: {
-								'Accept': 'application/json',
-								'Content-Type': 'application/json',
-							},
-							json: true,
-							ignoreHttpStatusErrors: true,
-						}
-					);
-
-					// Check for error
-					if (response.status === 'error') {
-						throw new NodeOperationError(this.getNode(), response.message, { itemIndex: 0 });
-					}
-
-					// Return the response
-					return [[{
-						json: response,
-						pairedItem: {
-							item: 0,
-							input: 0
-						}
-					}]];
-				} catch (error) {
-					let errorMessage = error.message;
-					// Extract error message from response body
-					if (error.response && error.response.body) {
-						const responseBody = error.response.body;
-						if (typeof responseBody === 'object' && responseBody.message) {
-							errorMessage = responseBody.message;
-						} else if (typeof responseBody === 'string') {
-							try {
-								const parsedBody = JSON.parse(responseBody);
-								if (parsedBody.message) {
-									errorMessage = parsedBody.message;
-								}
-							} catch (e) {
-								// JSON parsing failed, use original error
+							if (bearer) {
+								body.bearer = bearer;
 							}
 						}
-					}
 
-					if (this.continueOnFail()) {
-						return [[{
-							json: { error: errorMessage },
+						// Get credentials and construct full URL
+						const credentials = await this.getCredentials('chatDataApi');
+						const baseUrl = credentials.baseUrl as string;
+
+						const baseUrlFormatted = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+						const fullUrl = `${baseUrlFormatted}/api/v2/create-chatbot`;
+
+						const response = await this.helpers.httpRequestWithAuthentication.call(
+							this,
+							'chatDataApi',
+							{
+								url: fullUrl,
+								method: 'POST',
+								body,
+								headers: {
+									'Accept': 'application/json',
+									'Content-Type': 'application/json',
+								},
+								json: true,
+								ignoreHttpStatusErrors: true,
+							}
+						);
+
+						// Check for error
+						if (response.status === 'error') {
+							throw new NodeOperationError(this.getNode(), response.message, { itemIndex: i });
+						}
+
+						// Return the response with proper paired item
+						returnData.push({
+							json: response,
 							pairedItem: {
-								item: 0,
+								item: i,
 								input: 0
 							}
-						}]];
+						});
+					} catch (error) {
+						let errorMessage = error.message;
+						// Extract error message from response body
+						if (error.response && error.response.body) {
+							const responseBody = error.response.body;
+							if (typeof responseBody === 'object' && responseBody.message) {
+								errorMessage = responseBody.message;
+							} else if (typeof responseBody === 'string') {
+								try {
+									const parsedBody = JSON.parse(responseBody);
+									if (parsedBody.message) {
+										errorMessage = parsedBody.message;
+									}
+								} catch (e) {
+									// JSON parsing failed, use original error
+								}
+							}
+						}
+
+						if (this.continueOnFail()) {
+							returnData.push({
+								json: {
+									...items[i].json,
+									error: errorMessage,
+								},
+								pairedItem: {
+									item: i,
+									input: 0
+								}
+							});
+							continue;
+						}
+						throw new NodeOperationError(this.getNode(), errorMessage, { itemIndex: i });
 					}
-					throw error;
 				}
 			}
 		}
