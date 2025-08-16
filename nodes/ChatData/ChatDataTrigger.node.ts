@@ -6,8 +6,6 @@ import {
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	INodePropertyOptions,
-	IExecuteFunctions,
-	INodeExecutionData,
 	NodeConnectionType,
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
@@ -106,10 +104,17 @@ export class ChatDataTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				const chatbotId = webhookData.chatbotId as string;
 				const webhookUrl = webhookData.webhookUrl as string;
-				if (chatbotId && webhookUrl) {
-					try {
+				const eventType = webhookData.eventType as string;
+				
+				if (chatbotId && webhookUrl && eventType) {
+					const currentWebhookUrl = this.getNodeWebhookUrl('default');
+					if (webhookUrl === currentWebhookUrl) {
 						return true;
-					} catch (error) {
+					} else {
+						// Clear old data since URL changed
+						delete webhookData.chatbotId;
+						delete webhookData.eventType;
+						delete webhookData.webhookUrl;
 						return false;
 					}
 				}
@@ -119,6 +124,7 @@ export class ChatDataTrigger implements INodeType {
 				try {
 					const webhookUrl = this.getNodeWebhookUrl('default');
 					const operation = this.getNodeParameter('operation') as string;
+					
 					let eventType = '';
 					if (operation === 'onLeadSubmission') {
 						eventType = 'lead-submission';
@@ -157,16 +163,6 @@ export class ChatDataTrigger implements INodeType {
 					webhookData.chatbotId = chatbotId;
 					webhookData.eventType = eventType;
 					webhookData.webhookUrl = webhookUrl;
-					webhookData.isPersistent = true;
-
-					// Store the webhook creation response for later use in execute
-					webhookData.setupInfo = {
-						response,
-						chatbotId,
-						eventType,
-						webhookUrl,
-						createdAt: new Date().toISOString(),
-					};
 
 					return true;
 				} catch (error) {
@@ -211,7 +207,6 @@ export class ChatDataTrigger implements INodeType {
 						delete webhookData.chatbotId;
 						delete webhookData.eventType;
 						delete webhookData.webhookUrl;
-						delete webhookData.isPersistent;
 						return true;
 					}
 					return false;
@@ -223,156 +218,50 @@ export class ChatDataTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-		let bodyData: any;
-		try {
-			const rawBody = this.getRequestObject().rawBody;
-			bodyData = JSON.parse(rawBody.toString());
-		} catch (error) {
+		const req = this.getRequestObject();
+		let bodyData: Record<string, any>;
+		
+		// Parse body if it's a string
+		if (req.body && typeof req.body === 'string') {
+			try {
+				bodyData = JSON.parse(req.body);
+			} catch (e) {
+				bodyData = this.getBodyData();
+			}
+		} else {
+			bodyData = this.getBodyData();
 		}
-		const operation = this.getNodeParameter('operation', 0) as string;
-
-		// Handle different operations (event types)
-		if (operation === 'onLeadSubmission' && bodyData.event !== 'lead-submission') {
-			return {};
-		} else if (operation === 'onLiveChatEscalation' && bodyData.event !== 'live-chat-escalation') {
-			return {};
-		} else if (operation === 'onNewMessage' && bodyData.event !== 'chat') {
-			return {};
+		
+		// Parse stringified nested fields
+		if (typeof bodyData.messages === 'string') {
+			try {
+				bodyData.messages = JSON.parse(bodyData.messages);
+			} catch (e) {
+				// Keep as string if parsing fails
+			}
 		}
-
-		// Get the chatbot ID from the incoming data
-		const chatbotId = bodyData.chatbot_id as string;
-		const configuredChatbotId = this.getNodeParameter('chatbot_id', '') as string;
-
-		// If a specific chatbot ID is configured and doesn't match, ignore the webhook
-		if (configuredChatbotId && chatbotId !== configuredChatbotId) {
-			return {};
+		
+		if (typeof bodyData.answer === 'string') {
+			try {
+				bodyData.answer = JSON.parse(bodyData.answer);
+			} catch (e) {
+				// Keep as string if parsing fails
+			}
 		}
-
+		
+		if (typeof bodyData.lead === 'string') {
+			try {
+				bodyData.lead = JSON.parse(bodyData.lead);
+			} catch (e) {
+				// Keep as string if parsing fails
+			}
+		}
+		
 		return {
-			workflowData: [this.helpers.returnJsonArray([{
-				...bodyData,
-				pairedItem: {
-					item: 0,
-					input: 0
-				}
-			}])]
+			workflowData: [
+				this.helpers.returnJsonArray(bodyData)
+			],
 		};
 	}
 
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const items = this.getInputData();
-		const returnData: INodeExecutionData[] = [];
-
-		// Get operation
-		const operation = this.getNodeParameter('operation', 0) as string;
-
-		// Display webhook setup information
-		const webhookData = this.getWorkflowStaticData('node');
-
-		// Handle trigger operations based on the specific trigger type
-		if (operation === 'onLeadSubmission' || operation === 'onLiveChatEscalation' || operation === 'onNewMessage') {
-			// For webhook trigger, we're processing incoming webhook data
-			// This runs only when the webhook is triggered
-			let incomingData: any;
-
-			if (items.length === 0 && webhookData.setupInfo) {
-				// If no data is available yet, return webhook setup information
-				const setupInfo = webhookData.setupInfo as any;
-				incomingData = {
-					webhookSetup: {
-						status: 'success',
-						message: 'Webhook registered successfully. Waiting for events...',
-						response: setupInfo.response,
-						chatbotId: setupInfo.chatbotId,
-						eventType: setupInfo.eventType,
-						webhookUrl: setupInfo.webhookUrl,
-						createdAt: setupInfo.createdAt
-					},
-				};
-			} else if (typeof items[0]?.json === 'object' && items[0].json !== null) {
-				// If it's already an object, use directly
-				incomingData = items[0].json;
-			} else if (items[0]?.json) {
-				// If it's a string or other type, parse it
-				try {
-					incomingData = JSON.parse(String(items[0].json));
-				} catch (error) {
-					incomingData = {
-						data: items[0].json,
-						parseError: 'Could not parse incoming data as JSON'
-					};
-				}
-			} else {
-				// Fallback for when no data is available
-				incomingData = {
-					status: 'waiting',
-					message: 'Waiting for webhook data...',
-					webhookInfo: webhookData.setupInfo || {
-						eventType: webhookData.eventType,
-						chatbotId: webhookData.chatbotId,
-						webhookUrl: webhookData.webhookUrl,
-					},
-				};
-			}
-
-			// Process the webhook data
-			const newItem = {
-				json: incomingData,
-			};
-
-			returnData.push(newItem);
-		} else {
-			// Handle other trigger operations (polling triggers)
-			for (let i = 0; i < items.length; i++) {
-				try {
-					const pollInterval = this.getNodeParameter('pollInterval', i) as number;
-
-					const newItem = {
-						json: {
-							...items[i].json,
-							success: true,
-							operation,
-							pollInterval,
-						},
-					};
-
-					returnData.push(newItem);
-				} catch (error) {
-					let errorMessage = error.message;
-
-					// Extract error message from response body
-					if (error.response && error.response.body) {
-						const responseBody = error.response.body;
-						if (typeof responseBody === 'object' && responseBody.message) {
-							errorMessage = responseBody.message;
-						} else if (typeof responseBody === 'string') {
-							try {
-								const parsedBody = JSON.parse(responseBody);
-								if (parsedBody.message) {
-									errorMessage = parsedBody.message;
-								}
-							} catch (e) {
-								// JSON parsing failed, use original error
-							}
-						}
-					}
-
-					if (this.continueOnFail()) {
-						returnData.push({
-							json: {
-								...items[i].json,
-								error: errorMessage,
-							},
-							pairedItem: i,
-						});
-						continue;
-					}
-					throw new NodeOperationError(this.getNode(), errorMessage, { itemIndex: i });
-				}
-			}
-		}
-
-		return [returnData.length ? returnData : items];
-	}
 }
