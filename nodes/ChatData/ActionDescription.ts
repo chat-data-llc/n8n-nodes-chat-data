@@ -32,6 +32,12 @@ export const actionOperations: INodeProperties[] = [
         description: 'Retrieve conversation history from a chatbot',
         action: 'Get conversations',
       },
+      {
+        name: 'Append a Message',
+        value: 'appendMessage',
+        description: 'Append a message to an existing conversation as a human agent or assistant',
+        action: 'Append a message to an existing conversation',
+      },
     ],
     default: 'sendMessage',
   },
@@ -404,9 +410,200 @@ const getConversationsOperation: INodeProperties[] = [
   },
 ];
 
+// Fields for the 'appendMessage' operation
+const appendMessageOperation: INodeProperties[] = [
+  {
+    displayName: 'Chatbot Name or ID',
+    name: 'chatbot_id',
+    type: 'options',
+    description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+    typeOptions: {
+      loadOptionsMethod: 'getChatbots',
+    },
+    default: '',
+    required: true,
+    displayOptions: {
+      show: {
+        resource: ['action'],
+        operation: ['appendMessage'],
+      },
+    },
+  },
+  {
+    displayName: 'Conversation ID',
+    name: 'conversationId',
+    type: 'string',
+    default: '',
+    required: true,
+    displayOptions: {
+      show: {
+        resource: ['action'],
+        operation: ['appendMessage'],
+      },
+    },
+    description: 'The ID of the existing conversation to send the message to',
+  },
+  {
+    displayName: 'Message',
+    name: 'message',
+    type: 'string',
+    typeOptions: {
+      rows: 4,
+    },
+    default: '',
+    required: true,
+    displayOptions: {
+      show: {
+        resource: ['action'],
+        operation: ['appendMessage'],
+      },
+    },
+    description: 'The message text to send',
+  },
+  {
+    displayName: 'Sender Type',
+    name: 'senderType',
+    type: 'options',
+    options: [
+      {
+        name: 'Human Agent',
+        value: 'human',
+        description: 'Send as a human customer support agent',
+      },
+      {
+        name: 'Bot Response',
+        value: 'bot',
+        description: 'Send as an automated bot response',
+      },
+    ],
+    default: 'bot',
+    required: true,
+    displayOptions: {
+      show: {
+        resource: ['action'],
+        operation: ['appendMessage'],
+      },
+    },
+    description: 'Whether this message is from a human agent or bot',
+  },
+  {
+    displayName: 'Agent Name',
+    name: 'agentName',
+    type: 'string',
+    default: '',
+    displayOptions: {
+      show: {
+        resource: ['action'],
+        operation: ['appendMessage'],
+        senderType: ['human'],
+      },
+    },
+    description: 'Name of the human agent sending the message. If not provided, the chatbot owner\'s name will be used.',
+  },
+  {
+    displayName: 'Agent Avatar URL',
+    name: 'agentAvatar',
+    type: 'string',
+    default: '',
+    displayOptions: {
+      show: {
+        resource: ['action'],
+        operation: ['appendMessage'],
+        senderType: ['human'],
+      },
+    },
+    description: 'URL to the avatar image for the human agent. If not provided, the chatbot owner\'s avatar will be used.',
+  },
+  {
+    displayName: 'File Attachments',
+    name: 'files',
+    type: 'fixedCollection',
+    typeOptions: {
+      multipleValues: true,
+      sortable: true,
+    },
+    default: {},
+    placeholder: 'Add File',
+    description: 'Attach files to the message (maximum 3 files)',
+    displayOptions: {
+      show: {
+        resource: ['action'],
+        operation: ['appendMessage'],
+      },
+    },
+    options: [
+      {
+        name: 'fileValues',
+        displayName: 'File',
+        values: [
+          {
+            displayName: 'File Name',
+            name: 'name',
+            type: 'string',
+            default: '',
+            description: 'Name of the file',
+            required: true,
+          },
+          {
+            displayName: 'File Type',
+            name: 'type',
+            type: 'options',
+            options: [
+              {
+                name: 'PDF',
+                value: 'application/pdf',
+              },
+              {
+                name: 'Word Document (.docx)',
+                value: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+              },
+              {
+                name: 'HTML',
+                value: 'text/html',
+              },
+              {
+                name: 'Plain Text',
+                value: 'text/plain',
+              },
+              {
+                name: 'PNG Image',
+                value: 'image/png',
+              },
+              {
+                name: 'JPG Image',
+                value: 'image/jpg',
+              },
+              {
+                name: 'JPEG Image',
+                value: 'image/jpeg',
+              },
+              {
+                name: 'WebP Image',
+                value: 'image/webp',
+              },
+            ],
+            default: 'application/pdf',
+            description: 'MIME type of the file',
+            required: true,
+          },
+          {
+            displayName: 'File URL',
+            name: 'url',
+            type: 'string',
+            default: '',
+            description: 'Public URL where the file can be accessed',
+            required: true,
+          },
+        ],
+      },
+    ],
+  },
+];
+
 // Combine all fields
 export const actionFields: INodeProperties[] = [
   ...sendMessageOperation,
   ...getLeadsOperation,
   ...getConversationsOperation,
+  ...appendMessageOperation,
 ];
