@@ -49,7 +49,7 @@ const sendMessageOperation: INodeProperties[] = [
     displayName: 'Chatbot Name or ID',
     name: 'chatbot_id',
     type: 'options',
-    description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+    description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
     typeOptions: {
       loadOptionsMethod: 'getChatbots',
     },
@@ -127,11 +127,11 @@ const sendMessageOperation: INodeProperties[] = [
     },
     options: [
       {
-        displayName: 'Conversation ID',
-        name: 'conversationId',
-        type: 'string',
-        default: '',
-        description: 'ID of the current conversation. The chatbot will generate one if undefined.',
+        displayName: 'Append Messages',
+        name: 'appendMessages',
+        type: 'boolean',
+        default: true,
+        description: 'Whether to append messages to the previous conversation or replace them all',
       },
       {
         displayName: 'Base Model',
@@ -162,11 +162,11 @@ const sendMessageOperation: INodeProperties[] = [
         description: 'Overrides the Chatbot\'s basePrompt when processing the Rag context',
       },
       {
-        displayName: 'Append Messages',
-        name: 'appendMessages',
-        type: 'boolean',
-        default: true,
-        description: 'Whether to append messages to the previous conversation or replace them all',
+        displayName: 'Conversation ID',
+        name: 'conversationId',
+        type: 'string',
+        default: '',
+        description: 'ID of the current conversation. The chatbot will generate one if undefined.',
       },
       {
         displayName: 'Stream Response',
@@ -185,7 +185,7 @@ const getLeadsOperation: INodeProperties[] = [
     displayName: 'Chatbot Name or ID',
     name: 'chatbot_id',
     type: 'options',
-    description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+    description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
     typeOptions: {
       loadOptionsMethod: 'getChatbots',
     },
@@ -297,7 +297,7 @@ const getConversationsOperation: INodeProperties[] = [
     displayName: 'Chatbot Name or ID',
     name: 'chatbot_id',
     type: 'options',
-    description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+    description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
     typeOptions: {
       loadOptionsMethod: 'getChatbots',
     },
@@ -416,7 +416,7 @@ const appendMessageOperation: INodeProperties[] = [
     displayName: 'Chatbot Name or ID',
     name: 'chatbot_id',
     type: 'options',
-    description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+    description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
     typeOptions: {
       loadOptionsMethod: 'getChatbots',
     },
@@ -550,16 +550,20 @@ const appendMessageOperation: INodeProperties[] = [
             type: 'options',
             options: [
               {
-                name: 'PDF',
-                value: 'application/pdf',
-              },
-              {
-                name: 'Word Document (.docx)',
-                value: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-              },
-              {
                 name: 'HTML',
                 value: 'text/html',
+              },
+              {
+                name: 'JPEG Image',
+                value: 'image/jpeg',
+              },
+              {
+                name: 'JPG Image',
+                value: 'image/jpg',
+              },
+              {
+                name: 'PDF',
+                value: 'application/pdf',
               },
               {
                 name: 'Plain Text',
@@ -570,16 +574,12 @@ const appendMessageOperation: INodeProperties[] = [
                 value: 'image/png',
               },
               {
-                name: 'JPG Image',
-                value: 'image/jpg',
-              },
-              {
-                name: 'JPEG Image',
-                value: 'image/jpeg',
-              },
-              {
                 name: 'WebP Image',
                 value: 'image/webp',
+              },
+              {
+                name: 'Word Document (.docx)',
+                value: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
               },
             ],
             default: 'application/pdf',
