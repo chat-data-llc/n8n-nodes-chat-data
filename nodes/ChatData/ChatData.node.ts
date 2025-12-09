@@ -7,7 +7,7 @@ import {
 	INodeTypeDescription,
 	NodeOperationError,
 	IDataObject,
-	NodeConnectionType,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import {
@@ -35,9 +35,9 @@ export class ChatData implements INodeType {
 			name: 'Chat Data',
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
-		inputs: [NodeConnectionType.Main],
+		inputs: [NodeConnectionTypes.Main],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
-		outputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionTypes.Main],
 		icon: 'file:ChatData.svg',
 		subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"]}}',
 		credentials: [
@@ -558,6 +558,176 @@ export class ChatData implements INodeType {
 							}
 						}
 
+						if (this.continueOnFail()) {
+							returnData.push({
+								json: {
+									...items[i].json,
+									error: errorMessage,
+								},
+								pairedItem: {
+									item: i,
+									input: 0
+								}
+							});
+							continue;
+						}
+						throw new NodeOperationError(this.getNode(), errorMessage, { itemIndex: i });
+					}
+				}
+			} else if (operation === 'appendMessage') {
+				// Handle appendMessage operation
+				for (let i = 0; i < items.length; i++) {
+					try {
+						// Extract required parameters
+						const chatbotId = this.getNodeParameter('chatbot_id', i) as string;
+						const conversationId = this.getNodeParameter('conversationId', i) as string;
+						const message = this.getNodeParameter('message', i) as string;
+						const senderType = this.getNodeParameter('senderType', i) as string;
+
+						// Validate required fields
+						if (!chatbotId) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Chatbot ID is required',
+								{ itemIndex: i }
+							);
+						}
+
+						if (!conversationId) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Conversation ID is required',
+								{ itemIndex: i }
+							);
+						}
+
+						const trimmedMessage = message.trim();
+						if (!trimmedMessage) {
+							throw new NodeOperationError(
+								this.getNode(),
+								'Message text is required and cannot be empty',
+								{ itemIndex: i }
+							);
+						}
+
+						// Map simplified role to API role
+						const apiRole = senderType === 'human' ? 'human' : 'assistant';
+
+						// Build request body with required fields
+						const body: IDataObject = {
+							chatbotId,
+							conversationId,
+							message: trimmedMessage,
+							role: apiRole,
+						};
+
+						// Add conditional human agent fields
+						if (senderType === 'human') {
+							const agentName = this.getNodeParameter('agentName', i, '') as string;
+							const agentAvatar = this.getNodeParameter('agentAvatar', i, '') as string;
+
+							if (agentName) {
+								body.name = agentName;
+							}
+
+							if (agentAvatar) {
+								body.avatar = agentAvatar;
+							}
+						}
+
+						// Handle file attachments if provided
+						const filesData = this.getNodeParameter('files.fileValues', i, []) as IDataObject[];
+
+						if (filesData.length > 0) {
+							// Validate max 3 files
+							if (filesData.length > 3) {
+								throw new NodeOperationError(
+									this.getNode(),
+									'Maximum of 3 file attachments allowed',
+									{ itemIndex: i }
+								);
+							}
+
+							// Validate each file entry has required fields
+							for (const file of filesData) {
+								if (!file.name || !file.type || !file.url) {
+									throw new NodeOperationError(
+										this.getNode(),
+										'Each file attachment must have name, type, and url',
+										{ itemIndex: i }
+									);
+								}
+							}
+
+							// Format files for API
+							const files = filesData.map((file) => ({
+								name: file.name,
+								type: file.type,
+								url: file.url,
+							}));
+
+							body.files = files;
+						}
+
+						// Get credentials and construct URL
+						const credentials = await this.getCredentials('chatDataApi');
+						const baseUrl = credentials.baseUrl as string;
+						const baseUrlFormatted = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+						const fullUrl = `${baseUrlFormatted}/api/v2/live-chat`;
+
+						// Make the API request
+						const response = await this.helpers.httpRequestWithAuthentication.call(
+							this,
+							'chatDataApi',
+							{
+								url: fullUrl,
+								method: 'POST',
+								body,
+								headers: {
+									'Accept': 'application/json',
+									'Content-Type': 'application/json',
+								},
+								json: true,
+								ignoreHttpStatusErrors: true,
+							}
+						);
+
+						// Check for API error response
+						if (response.status === 'error') {
+							throw new NodeOperationError(this.getNode(), response.message, { itemIndex: i });
+						}
+
+						// Return response with proper pairedItem structure (wrapped in output)
+						returnData.push({
+							json: {
+								output: response,
+							},
+							pairedItem: {
+								item: i,
+								input: 0
+							}
+						});
+					} catch (error) {
+						let errorMessage = error.message;
+
+						// Extract error message from response body
+						if (error.response && error.response.body) {
+							const responseBody = error.response.body;
+							if (typeof responseBody === 'object' && responseBody.message) {
+								errorMessage = responseBody.message;
+							} else if (typeof responseBody === 'string') {
+								try {
+									const parsedBody = JSON.parse(responseBody);
+									if (parsedBody.message) {
+										errorMessage = parsedBody.message;
+									}
+								} catch (e) {
+									// JSON parsing failed, use original error
+								}
+							}
+						}
+
+						// Handle continueOnFail mode
 						if (this.continueOnFail()) {
 							returnData.push({
 								json: {
