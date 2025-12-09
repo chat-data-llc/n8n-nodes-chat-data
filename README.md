@@ -40,6 +40,7 @@ The operations in this node are organized into the following categories:
 - **Send a Message**: Send a chat message to a chatbot
 - **Get Leads**: Retrieve customer leads from a chatbot
 - **Get Conversations**: Retrieve conversation history from a chatbot
+- **Append a Message**: Send a message to an existing conversation as a human agent or bot
 
 ##### Chatbot
 
@@ -76,12 +77,6 @@ This node is used to receive real-time events from Chat Data via webhooks. You c
 > **Important:** For webhook testing, ensure the `chatbot_id` in your trigger configuration matches the `chatbot_id` field in the incoming webhook payload.
 
 ---
-
-## Migration Notice
-
-> **If you are upgrading from a previous version:**
->
-> Triggers (webhook-based events) have been moved from the main Chat Data node to a new, dedicated node called **Chat Data Trigger**. Please update your workflows to use the new trigger node for webhook-based automations.
 
 ## Authentication
 
